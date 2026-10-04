@@ -39,7 +39,7 @@ def analyze_squat(lm, aspect: float = 1.0) -> Feedback:
     if not _is_frontal(lm, aspect):
         torso = angle_from_vertical(_pt(lm, SHOULDER), _pt(lm, HIP))
         fb.metrics["torso_lean"] = torso
-        if torso > 50:
+        if torso > 35:  # form1 (iyi) tepe 29, form2 (one egik) tepe 43
             fb.issues.append("Govde fazla one egik")
     return fb
 
