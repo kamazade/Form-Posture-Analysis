@@ -13,10 +13,12 @@ class PoseEstimator:
             raise FileNotFoundError(
                 f"Model bulunamadi: {model_path} (README'deki indirme adimina bak)"
             )
+        # Yerel kutuphane Windows'ta ASCII disi yollari (or. 'Masaüstü') acamaz; bellekten yukle.
+        model_bytes = Path(model_path).read_bytes()
         self._static = static
         mode = vision.RunningMode.IMAGE if static else vision.RunningMode.VIDEO
         options = vision.PoseLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=str(model_path)), running_mode=mode
+            base_options=BaseOptions(model_asset_buffer=model_bytes), running_mode=mode
         )
         self._landmarker = vision.PoseLandmarker.create_from_options(options)
         self._ts_ms = 0
