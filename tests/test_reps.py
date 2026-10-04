@@ -59,7 +59,7 @@ def test_lateral_event_without_knee_bend_becomes_own_entry():
     for i in range(10):
         t.update(i, {"knee": 175})
     for i in range(10, 25):
-        t.update(i, {"knee": 165, "shoulder_tilt": 18, "trunk_shift": 30})
+        t.update(i, {"knee": 150, "shoulder_tilt": 18, "trunk_shift": 30})
     t.update(25, {"knee": 175})
     assert len(t.reps) == 1 and "yana egilme" in t.reps[0].issues[0]
 
@@ -69,4 +69,12 @@ def test_short_lateral_blip_ignored():
     for i in range(3):
         t.update(i, {"knee": 175, "shoulder_tilt": 18, "trunk_shift": 30})
     t.update(3, {"knee": 175})
+    assert t.reps == []
+
+
+def test_standing_shoulder_tilt_is_not_a_movement():
+    t = RepTracker(smooth=1)
+    for i in range(30):
+        t.update(i, {"knee": 168, "shoulder_tilt": 30, "trunk_shift": 40})
+    t.update(30, {"knee": 175})
     assert t.reps == []

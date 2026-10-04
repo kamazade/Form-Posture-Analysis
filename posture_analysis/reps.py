@@ -33,7 +33,8 @@ class RepTracker:
       max_stance: tekrar oncesi ayakta ayak mesafesi / omuz genisligi bunu asarsa
                  'bacaklar cok acik' (yanlis 1.47, dogrular en cok 1.24).
       lat_*: omuz egimi >= lat_tilt VE omuz merkezi kaymasi >= lat_shift (govde boyu %),
-                 en az lat_frames kare surerse 'yana egilme'. Dizler az bukuldugunde
+                 en az lat_frames kare surerse 'yana egilme'. Dizler az bukuldugunde (ama en az
+                 'up' derecenin altina indiginde; ayakta omuz egmek sayilmaz)
                  tekrar sayilmayabilecegi icin ayri bir hareket olarak da eklenir.
       max_depth_knee: en derin diz acisi bunu asmazsa 'yeterince inmedi'
                  (ayarlanmadi; ornek videolar hep cok derindi).
@@ -74,6 +75,8 @@ class RepTracker:
         r, self._lat = self._lat, None
         if r is None or r["n"] < self.lat_frames:
             return None
+        if self._cur is None and r["min_knee"] >= self.up:
+            return None  # ayakta durup omuz egmek squat girisimi degil; hareket sayma
         msg = f"yana egilme (omuz {r['tilt']:.0f} derece, kayma %{r['shift']:.0f})"
         if self._cur is not None:  # squat sirasinda: o tekrara ekle
             self._cur["lateral"] = msg
