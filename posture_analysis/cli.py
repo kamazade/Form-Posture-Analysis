@@ -33,9 +33,9 @@ def main():
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
 
     for frame in frames(args.source):
-        lm, res = estimator.process(frame)
+        lm, pts = estimator.process(frame)
         if lm:
-            estimator.draw(frame, res)
+            estimator.draw(frame, pts)
             overlay(frame, analyze(lm))
         else:
             cv2.putText(frame, "Kisi bulunamadi", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)

@@ -5,3 +5,4 @@ __pycache__/
 outputs/
 *.mp4
 *.avi
+models/*.task

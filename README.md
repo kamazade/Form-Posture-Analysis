@@ -3,11 +3,16 @@
 MediaPipe + OpenCV ile egzersiz formu ve statik postür analizi. Girdi: canlı webcam, video veya fotoğraf.
 
 ## Kurulum
-MediaPipe henüz tüm Python sürümlerini desteklemez; Python 3.10–3.12 önerilir.
+Python 3.10+ ve MediaPipe 1.x (Tasks API) gerekir.
 
     python -m venv .venv
     .venv\Scripts\activate
     pip install -r requirements.txt
+
+Pose modeli (~9 MB) `models/` altına indirilmelidir:
+
+    mkdir models
+    curl -L -o models/pose_landmarker_full.task https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task
 
 ## Kullanım
 
