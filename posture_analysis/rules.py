@@ -21,8 +21,9 @@ class Feedback:
         return not self.issues
 
 
-def _pt(lm, i):
-    return (lm[i][0], lm[i][1])
+def _pt(lm, i, aspect=1.0):
+    # Landmark'lar normalize (x/genislik, y/yukseklik); aci icin piksel orani gerekir.
+    return (lm[i][0] * aspect, lm[i][1])
 
 
 def _is_frontal(lm, aspect) -> bool:
@@ -34,19 +35,19 @@ def _is_frontal(lm, aspect) -> bool:
 
 def analyze_squat(lm, aspect: float = 1.0) -> Feedback:
     # Derin cokus (diz ~40-50 derece) gecerli bir squat; "cok derin" kurali yok.
-    knee = angle_between(_pt(lm, HIP), _pt(lm, KNEE), _pt(lm, ANKLE))
+    knee = angle_between(_pt(lm, HIP, aspect), _pt(lm, KNEE, aspect), _pt(lm, ANKLE, aspect))
     fb = Feedback(metrics={"knee": knee})
     if not _is_frontal(lm, aspect):
-        torso = angle_from_vertical(_pt(lm, SHOULDER), _pt(lm, HIP))
+        torso = angle_from_vertical(_pt(lm, SHOULDER, aspect), _pt(lm, HIP, aspect))
         fb.metrics["torso_lean"] = torso
-        if torso > 35:  # form1 (iyi) tepe 29, form2 (one egik) tepe 43
+        if torso > 47:  # derin kareler: form1 (iyi) max 45, form2 (one egik) p10 50
             fb.issues.append("Govde fazla one egik")
     return fb
 
 
 def analyze_sitting(lm, aspect: float = 1.0) -> Feedback:
-    neck = angle_from_vertical(_pt(lm, EAR), _pt(lm, SHOULDER))
-    torso = angle_from_vertical(_pt(lm, SHOULDER), _pt(lm, HIP))
+    neck = angle_from_vertical(_pt(lm, EAR, aspect), _pt(lm, SHOULDER, aspect))
+    torso = angle_from_vertical(_pt(lm, SHOULDER, aspect), _pt(lm, HIP, aspect))
     fb = Feedback(metrics={"neck_tilt": neck, "torso_lean": torso})
     if neck > 30:
         fb.issues.append("Bas one dusmus")

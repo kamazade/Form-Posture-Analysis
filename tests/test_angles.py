@@ -39,3 +39,12 @@ def test_squat_torso_skipped_when_frontal():
     from posture_analysis.rules import analyze_squat
     lm = _lm(p11=(0.4, 0.3), p12=(0.6, 0.3), p23=(0.45, 0.6), p25=(0.45, 0.8), p27=(0.45, 0.95))
     assert "torso_lean" not in analyze_squat(lm, 16 / 9).metrics
+
+
+def test_aspect_scales_x_for_angles():
+    from posture_analysis.rules import analyze_squat
+    # normalize koordinatta 45 derece gorunen govde, 16:9 karede gercekte ~60 dereceye yakin egimlidir
+    lm = _lm(p11=(0.6, 0.4), p12=(0.6, 0.4), p23=(0.5, 0.6), p25=(0.5, 0.8), p27=(0.5, 0.95))
+    sq = analyze_squat(lm, 1.0).metrics["torso_lean"]
+    wide = analyze_squat(lm, 16 / 9).metrics["torso_lean"]
+    assert wide > sq + 10
