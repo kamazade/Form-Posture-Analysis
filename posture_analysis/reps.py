@@ -12,6 +12,7 @@ class Rep:
     peak_torso: float | None  # None: tekrar boyunca yan gorunum yoktu
     issues: list = field(default_factory=list)
     stance: float | None = None  # ayakta ayak mesafesi / omuz genisligi
+    sway: float | None = None  # tekrar boyunca kalcanin yan salinimi (govde boyu %)
 
     @property
     def ok(self) -> bool:
@@ -20,7 +21,8 @@ class Rep:
     def summary(self) -> str:
         torso = "-" if self.peak_torso is None else f"{self.peak_torso:.0f}"
         verdict = "dogru" if self.ok else "; ".join(self.issues)
-        return f"Tekrar {self.index}: {verdict} [diz min {self.min_knee:.0f}, govde tepe {torso}]"
+        sway = "" if self.sway is None else f", kalca salinim {self.sway:.0f}"
+        return f"Tekrar {self.index}: {verdict} [diz min {self.min_knee:.0f}, govde tepe {torso}{sway}]"
 
 
 class RepTracker:
@@ -32,6 +34,9 @@ class RepTracker:
                  (etiketli dogrular en cok 56, one egikler 58-62).
       max_stance: tekrar oncesi ayakta ayak mesafesi / omuz genisligi bunu asarsa
                  'bacaklar cok acik' (yanlis 1.47, dogrular en cok 1.24).
+      max_sway: tekrar boyunca kalcanin ayak ortasina gore yan salinimi (max-min, govde
+                 boyu %) bunu asarsa 'kalca yana kayiyor'. On gorunum kareleri, en az
+                 sway_frames kare gerekir. Esik gecici: etiketli dogrular en cok 21.
       lat_*: omuz egimi >= lat_tilt VE omuz merkezi kaymasi >= lat_shift (govde boyu %),
                  en az lat_frames kare surerse 'yana egilme'. Dizler az bukuldugunde (ama en az
                  'up' derecenin altina indiginde; ayakta omuz egmek sayilmaz)
@@ -41,10 +46,12 @@ class RepTracker:
     """
 
     def __init__(self, down=130, up=160, min_frames=6, smooth=5, max_torso=57, max_depth_knee=100, max_stance=1.35,
-                 lat_tilt=14, lat_shift=20, lat_frames=8):
+                 lat_tilt=14, lat_shift=20, lat_frames=8, max_sway=25, sway_frames=15):
         self.down, self.up, self.min_frames = down, up, min_frames
         self.max_torso, self.max_depth_knee, self.max_stance = max_torso, max_depth_knee, max_stance
         self.lat_tilt, self.lat_shift, self.lat_frames = lat_tilt, lat_shift, lat_frames
+        self.max_sway, self.sway_frames = max_sway, sway_frames
+        self._hips = deque(maxlen=smooth)
         self._lat = None
         self._stance = deque(maxlen=40)  # ayakta iken son stance degerleri
         self._knees = deque(maxlen=smooth)
@@ -95,12 +102,15 @@ class RepTracker:
         if self._cur is None:
             if knee < self.down:
                 stance = median(self._stance) if self._stance else None
-                self._cur = {"start": frame, "min_knee": knee, "peak_torso": torso, "stance": stance}
+                self._cur = {"start": frame, "min_knee": knee, "peak_torso": torso, "stance": stance, "hip": []}
             elif knee > self.up and "stance" in metrics:
                 self._stance.append(metrics["stance"])
             return None
         c = self._cur
         c["min_knee"] = min(c["min_knee"], knee)
+        if "hip_offset" in metrics:
+            self._hips.append(metrics["hip_offset"])
+            c["hip"].append(median(self._hips))
         if torso is not None:
             c["peak_torso"] = torso if c["peak_torso"] is None else max(c["peak_torso"], torso)
         if knee > self.up:
@@ -123,6 +133,10 @@ class RepTracker:
             rep.issues.append(f"bacaklar cok acik ({rep.stance:.2f}x omuz)")
         if rep.peak_torso is not None and rep.peak_torso > self.max_torso:
             rep.issues.append(f"govde one cok egik ({rep.peak_torso:.0f})")
+        if len(c["hip"]) >= self.sway_frames:
+            rep.sway = max(c["hip"]) - min(c["hip"])
+            if rep.sway > self.max_sway:
+                rep.issues.append(f"kalca yana kayiyor ({rep.sway:.0f})")
         if c.get("lateral"):
             rep.issues.append(c["lateral"])
         self.reps.append(rep)

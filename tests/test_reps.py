@@ -78,3 +78,21 @@ def test_standing_shoulder_tilt_is_not_a_movement():
         t.update(i, {"knee": 168, "shoulder_tilt": 30, "trunk_shift": 40})
     t.update(30, {"knee": 175})
     assert t.reps == []
+
+
+def _sway_rep(amp):
+    t = RepTracker(smooth=1)
+    k = squat(50, 20)
+    for i, kn in enumerate(k):
+        t.update(i, {"knee": kn, "hip_offset": amp * (1 if (i // 4) % 2 else -1)})
+    t.finish(len(k))
+    return t.reps[0]
+
+
+def test_hip_sway_flagged_when_large():
+    rep = _sway_rep(20)
+    assert rep.sway == 40 and any("kalca" in x for x in rep.issues)
+
+
+def test_small_hip_sway_ok():
+    assert _sway_rep(5).ok

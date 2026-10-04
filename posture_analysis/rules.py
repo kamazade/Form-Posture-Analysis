@@ -44,6 +44,7 @@ def lateral_metrics(lm, aspect) -> dict:
 
     shoulder_tilt: omuz hattinin yataydan egimi (derece)
     trunk_shift: omuz merkezinin kalca merkezine gore yan kaymasi (govde boyu yuzdesi)
+    hip_offset: kalca merkezinin ayak bilekleri ortasina gore yan konumu (govde boyu yuzdesi)
     """
     p = lambda i: np.array(_pt(lm, i, aspect))
     ms, mh = (p(SHOULDER) + p(R_SHOULDER)) / 2, (p(HIP) + p(HIP + 1)) / 2
@@ -53,7 +54,12 @@ def lateral_metrics(lm, aspect) -> dict:
         return {}
     d = p(SHOULDER) - p(R_SHOULDER)
     tilt = abs((np.degrees(np.arctan2(d[1], d[0])) + 90) % 180 - 90)
-    return {"shoulder_tilt": float(tilt), "trunk_shift": float(abs(ms[0] - mh[0]) / tl * 100)}
+    base = (p(ANKLE) + p(ANKLE + 1)) / 2
+    return {
+        "shoulder_tilt": float(tilt),
+        "trunk_shift": float(abs(ms[0] - mh[0]) / tl * 100),
+        "hip_offset": float((mh[0] - base[0]) / tl * 100),
+    }
 
 
 def torso_lean_3d(world) -> float:
