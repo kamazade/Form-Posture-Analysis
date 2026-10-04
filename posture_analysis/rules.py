@@ -39,6 +39,23 @@ def _is_frontal(lm, aspect) -> bool:
     return tl > 0 and sw / tl**0.5 > FRONTAL_RATIO
 
 
+def lateral_metrics(lm, aspect) -> dict:
+    """Kameraya yari/tam donukken yana egilme gostergeleri; yan gorunumde bos dondurur.
+
+    shoulder_tilt: omuz hattinin yataydan egimi (derece)
+    trunk_shift: omuz merkezinin kalca merkezine gore yan kaymasi (govde boyu yuzdesi)
+    """
+    p = lambda i: np.array(_pt(lm, i, aspect))
+    ms, mh = (p(SHOULDER) + p(R_SHOULDER)) / 2, (p(HIP) + p(HIP + 1)) / 2
+    tl = np.linalg.norm(ms - mh)
+    sw, hw = abs(p(SHOULDER)[0] - p(R_SHOULDER)[0]), abs(p(HIP)[0] - p(HIP + 1)[0])
+    if tl == 0 or sw / tl <= 0.4 or hw / tl <= 0.25:
+        return {}
+    d = p(SHOULDER) - p(R_SHOULDER)
+    tilt = abs((np.degrees(np.arctan2(d[1], d[0])) + 90) % 180 - 90)
+    return {"shoulder_tilt": float(tilt), "trunk_shift": float(abs(ms[0] - mh[0]) / tl * 100)}
+
+
 def torso_lean_3d(world) -> float:
     """Govdenin vucut cercevesinde (kalca ekseni) one/arkaya egimi, derece; kamera acisindan bagimsiz.
 
@@ -72,6 +89,7 @@ def analyze_squat(lm, aspect: float = 1.0, world=None) -> Feedback:
         fb.metrics["stance"] = stance_ratio(world)
     elif not _is_frontal(lm, aspect):  # 3B yoksa: 2B, yalniz yan gorunumde anlamli
         torso = angle_from_vertical(_pt(lm, SHOULDER, aspect), _pt(lm, HIP, aspect))
+    fb.metrics.update(lateral_metrics(lm, aspect))
     if torso is not None:
         fb.metrics["torso_lean"] = torso
         if torso > MAX_TORSO:

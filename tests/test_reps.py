@@ -52,3 +52,21 @@ def test_wide_stance_flagged():
         t.update(30 + i, {"knee": k, "stance": 1.5})
     t.finish(100)
     assert any("bacaklar" in x for x in t.reps[0].issues)
+
+
+def test_lateral_event_without_knee_bend_becomes_own_entry():
+    t = RepTracker(smooth=1)
+    for i in range(10):
+        t.update(i, {"knee": 175})
+    for i in range(10, 25):
+        t.update(i, {"knee": 165, "shoulder_tilt": 18, "trunk_shift": 30})
+    t.update(25, {"knee": 175})
+    assert len(t.reps) == 1 and "yana egilme" in t.reps[0].issues[0]
+
+
+def test_short_lateral_blip_ignored():
+    t = RepTracker(smooth=1)
+    for i in range(3):
+        t.update(i, {"knee": 175, "shoulder_tilt": 18, "trunk_shift": 30})
+    t.update(3, {"knee": 175})
+    assert t.reps == []
