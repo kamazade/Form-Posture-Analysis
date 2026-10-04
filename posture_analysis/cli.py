@@ -52,8 +52,11 @@ def main():
             cv2.imshow("Posture Analysis", frame)
             if is_image(args.source):
                 cv2.waitKey(0)
-            elif cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+            else:
+                key = cv2.waitKey(1) & 0xFF
+                closed = cv2.getWindowProperty("Posture Analysis", cv2.WND_PROP_VISIBLE) < 1
+                if key in (ord("q"), 27) or closed:  # q, Esc veya pencere kapatma (X)
+                    break
     if writer:
         writer.release()
     cv2.destroyAllWindows()

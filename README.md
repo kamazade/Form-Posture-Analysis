@@ -20,7 +20,7 @@ Pose modeli (~9 MB) `models/` altına indirilmelidir:
     python -m posture_analysis --mode sitting --source video.mp4 --output outputs/out.mp4
     python -m posture_analysis --mode sitting --source foto.jpg --output outputs/out.jpg
 
-Modlar: `squat` (diz/gövde açısı), `sitting` (boyun/gövde eğimi). Çıkış: `q`.
+Modlar: `squat` (diz/gövde açısı), `sitting` (boyun/gövde eğimi). Çıkış: `q`, `Esc` veya pencereyi kapat (X).
 
 ## Yapı
 - `posture_analysis/angles.py` – saf geometri (test edilebilir)
