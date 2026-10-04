@@ -36,7 +36,7 @@ def main():
         lm, pts = estimator.process(frame)
         if lm:
             estimator.draw(frame, pts)
-            overlay(frame, analyze(lm))
+            overlay(frame, analyze(lm, frame.shape[1] / frame.shape[0]))
         else:
             cv2.putText(frame, "Kisi bulunamadi", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
 

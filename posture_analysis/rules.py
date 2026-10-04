@@ -4,6 +4,11 @@ from .angles import angle_between, angle_from_vertical
 
 # MediaPipe Pose landmark indeksleri
 EAR, SHOULDER, HIP, KNEE, ANKLE = 7, 11, 23, 25, 27  # sol taraf
+R_SHOULDER = 12
+
+# Omuz genisligi / govde uzunlugu bu degerin ustundeyse kisi kameraya donuk;
+# 2B govde egimi bu durumda anlamsiz oldugu icin olculmez.
+FRONTAL_RATIO = 0.8
 
 
 @dataclass
@@ -20,18 +25,26 @@ def _pt(lm, i):
     return (lm[i][0], lm[i][1])
 
 
-def analyze_squat(lm) -> Feedback:
+def _is_frontal(lm, aspect) -> bool:
+    """aspect = kare genisligi / yuksekligi (landmark'lar normalize oldugu icin)."""
+    sw = abs(lm[SHOULDER][0] - lm[R_SHOULDER][0]) * aspect
+    tl = ((lm[SHOULDER][0] - lm[HIP][0]) * aspect) ** 2 + (lm[SHOULDER][1] - lm[HIP][1]) ** 2
+    return tl > 0 and sw / tl**0.5 > FRONTAL_RATIO
+
+
+def analyze_squat(lm, aspect: float = 1.0) -> Feedback:
+    # Derin cokus (diz ~40-50 derece) gecerli bir squat; "cok derin" kurali yok.
     knee = angle_between(_pt(lm, HIP), _pt(lm, KNEE), _pt(lm, ANKLE))
-    torso = angle_from_vertical(_pt(lm, SHOULDER), _pt(lm, HIP))
-    fb = Feedback(metrics={"knee": knee, "torso_lean": torso})
-    if torso > 55:
-        fb.issues.append("Govde fazla one egik")
-    if knee < 70:
-        fb.issues.append("Cok derin cokuyorsun")
+    fb = Feedback(metrics={"knee": knee})
+    if not _is_frontal(lm, aspect):
+        torso = angle_from_vertical(_pt(lm, SHOULDER), _pt(lm, HIP))
+        fb.metrics["torso_lean"] = torso
+        if torso > 50:
+            fb.issues.append("Govde fazla one egik")
     return fb
 
 
-def analyze_sitting(lm) -> Feedback:
+def analyze_sitting(lm, aspect: float = 1.0) -> Feedback:
     neck = angle_from_vertical(_pt(lm, EAR), _pt(lm, SHOULDER))
     torso = angle_from_vertical(_pt(lm, SHOULDER), _pt(lm, HIP))
     fb = Feedback(metrics={"neck_tilt": neck, "torso_lean": torso})
