@@ -22,6 +22,7 @@ class PoseEstimator:
         )
         self._landmarker = vision.PoseLandmarker.create_from_options(options)
         self._ts_ms = 0
+        self.last_world = None  # son karenin 3B dunya landmark'lari [(x, y, z)] (metre, kalca merkezli)
 
     def process(self, frame_bgr):
         """(landmark listesi [(x, y, visibility)] | None, ham landmark) döndürür; x,y normalize."""
@@ -31,6 +32,9 @@ class PoseEstimator:
         else:
             self._ts_ms += 33  # monoton artan zaman damgası
             res = self._landmarker.detect_for_video(img, self._ts_ms)
+        self.last_world = (
+            [(p.x, p.y, p.z) for p in res.pose_world_landmarks[0]] if res.pose_world_landmarks else None
+        )
         if not res.pose_landmarks:
             return None, None
         pts = res.pose_landmarks[0]

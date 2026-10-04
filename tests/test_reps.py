@@ -30,7 +30,7 @@ def test_shallow_rep_flagged():
 
 def test_leaning_rep_flagged_and_good_rep_ok():
     k = squat(50)
-    reps = run(k + [175] * 3 + k, [10] * len(k) + [0] * 3 + [55] * len(k))
+    reps = run(k + [175] * 3 + k, [10] * len(k) + [0] * 3 + [65] * len(k))
     assert reps[0].ok
     assert not reps[1].ok and "govde" in reps[1].issues[0]
 
@@ -42,3 +42,13 @@ def test_frontal_rep_has_no_torso_verdict():
 
 def test_jitter_below_min_frames_ignored():
     assert run([175, 100, 175, 175]) == []
+
+
+def test_wide_stance_flagged():
+    t = RepTracker(smooth=1)
+    for i in range(30):
+        t.update(i, {"knee": 175, "stance": 1.5})
+    for i, k in enumerate(squat(50)):
+        t.update(30 + i, {"knee": k, "stance": 1.5})
+    t.finish(100)
+    assert any("bacaklar" in x for x in t.reps[0].issues)

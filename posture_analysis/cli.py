@@ -46,7 +46,7 @@ def main():
         lm, pts = estimator.process(frame)
         if lm:
             estimator.draw(frame, pts)
-            fb = analyze(lm, frame.shape[1] / frame.shape[0])
+            fb = analyze(lm, frame.shape[1] / frame.shape[0], estimator.last_world)
             overlay(frame, fb)
             if tracker:
                 rep = tracker.update(n, fb.metrics)

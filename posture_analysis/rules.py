@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from .angles import angle_between, angle_from_vertical
 
 # MediaPipe Pose landmark indeksleri
@@ -9,6 +11,10 @@ R_SHOULDER = 12
 # Omuz genisligi / govde uzunlugu bu degerin ustundeyse kisi kameraya donuk;
 # 2B govde egimi bu durumda anlamsiz oldugu icin olculmez.
 FRONTAL_RATIO = 0.8
+
+# Govde one egimi (3B, derece) bunu asarsa hata. Etiketli tekrarlarda dogrular en cok 56,
+# one egik tekrarlar 58-62 cikti (dar marj).
+MAX_TORSO = 57
 
 
 @dataclass
@@ -33,19 +39,47 @@ def _is_frontal(lm, aspect) -> bool:
     return tl > 0 and sw / tl**0.5 > FRONTAL_RATIO
 
 
-def analyze_squat(lm, aspect: float = 1.0) -> Feedback:
+def torso_lean_3d(world) -> float:
+    """Govdenin vucut cercevesinde (kalca ekseni) one/arkaya egimi, derece; kamera acisindan bagimsiz.
+
+    world: MediaPipe 3B dunya landmark'lari [(x, y, z)], y asagi dogru.
+    """
+    w = np.asarray(world, dtype=float)
+    trunk = (w[SHOULDER] + w[R_SHOULDER]) / 2 - (w[HIP] + w[HIP + 1]) / 2
+    side = w[HIP] - w[HIP + 1]
+    side[1] = 0.0
+    n = np.linalg.norm(side)
+    if n == 0:
+        return 0.0
+    forward = np.cross(side / n, [0.0, 1.0, 0.0])
+    return float(abs(np.degrees(np.arctan2(trunk @ forward, -trunk[1]))))
+
+
+def stance_ratio(world) -> float:
+    """Ayak bilekleri arasi mesafe / omuz genisligi (3B)."""
+    w = np.asarray(world, dtype=float)
+    sw = np.linalg.norm(w[SHOULDER] - w[R_SHOULDER])
+    return float(np.linalg.norm(w[ANKLE] - w[ANKLE + 1]) / sw) if sw else 0.0
+
+
+def analyze_squat(lm, aspect: float = 1.0, world=None) -> Feedback:
     # Derin cokus (diz ~40-50 derece) gecerli bir squat; "cok derin" kurali yok.
     knee = angle_between(_pt(lm, HIP, aspect), _pt(lm, KNEE, aspect), _pt(lm, ANKLE, aspect))
     fb = Feedback(metrics={"knee": knee})
-    if not _is_frontal(lm, aspect):
+    torso = None
+    if world is not None:
+        torso = torso_lean_3d(world)
+        fb.metrics["stance"] = stance_ratio(world)
+    elif not _is_frontal(lm, aspect):  # 3B yoksa: 2B, yalniz yan gorunumde anlamli
         torso = angle_from_vertical(_pt(lm, SHOULDER, aspect), _pt(lm, HIP, aspect))
+    if torso is not None:
         fb.metrics["torso_lean"] = torso
-        if torso > 47:  # derin kareler: form1 (iyi) max 45, form2 (one egik) p10 50
+        if torso > MAX_TORSO:
             fb.issues.append("Govde fazla one egik")
     return fb
 
 
-def analyze_sitting(lm, aspect: float = 1.0) -> Feedback:
+def analyze_sitting(lm, aspect: float = 1.0, world=None) -> Feedback:
     neck = angle_from_vertical(_pt(lm, EAR, aspect), _pt(lm, SHOULDER, aspect))
     torso = angle_from_vertical(_pt(lm, SHOULDER, aspect), _pt(lm, HIP, aspect))
     fb = Feedback(metrics={"neck_tilt": neck, "torso_lean": torso})

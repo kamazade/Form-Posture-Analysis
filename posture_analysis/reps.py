@@ -11,6 +11,7 @@ class Rep:
     min_knee: float
     peak_torso: float | None  # None: tekrar boyunca yan gorunum yoktu
     issues: list = field(default_factory=list)
+    stance: float | None = None  # ayakta ayak mesafesi / omuz genisligi
 
     @property
     def ok(self) -> bool:
@@ -27,15 +28,18 @@ class RepTracker:
 
     Esikler (derece):
       down/up: tekrarin basladigi/bittigi diz acisi (histerezis).
-      max_torso: tekrar boyunca tepe govde egimi bunu asarsa 'one cok egik'
-                 (form1 max 45, form2 p10 50 verisinden).
+      max_torso: tekrar boyunca tepe govde egimi (3B) bunu asarsa 'one cok egik'
+                 (etiketli dogrular en cok 56, one egikler 58-62).
+      max_stance: tekrar oncesi ayakta ayak mesafesi / omuz genisligi bunu asarsa
+                 'bacaklar cok acik' (yanlis 1.47, dogrular en cok 1.24).
       max_depth_knee: en derin diz acisi bunu asmazsa 'yeterince inmedi'
                  (ayarlanmadi; ornek videolar hep cok derindi).
     """
 
-    def __init__(self, down=130, up=160, min_frames=6, smooth=5, max_torso=47, max_depth_knee=100):
+    def __init__(self, down=130, up=160, min_frames=6, smooth=5, max_torso=57, max_depth_knee=100, max_stance=1.35):
         self.down, self.up, self.min_frames = down, up, min_frames
-        self.max_torso, self.max_depth_knee = max_torso, max_depth_knee
+        self.max_torso, self.max_depth_knee, self.max_stance = max_torso, max_depth_knee, max_stance
+        self._stance = deque(maxlen=40)  # ayakta iken son stance degerleri
         self._knees = deque(maxlen=smooth)
         self._torsos = deque(maxlen=smooth)
         self._cur = None
@@ -51,7 +55,10 @@ class RepTracker:
             torso = median(self._torsos)
         if self._cur is None:
             if knee < self.down:
-                self._cur = {"start": frame, "min_knee": knee, "peak_torso": torso}
+                stance = median(self._stance) if self._stance else None
+                self._cur = {"start": frame, "min_knee": knee, "peak_torso": torso, "stance": stance}
+            elif knee > self.up and "stance" in metrics:
+                self._stance.append(metrics["stance"])
             return None
         c = self._cur
         c["min_knee"] = min(c["min_knee"], knee)
@@ -69,9 +76,11 @@ class RepTracker:
         c, self._cur = self._cur, None
         if frame - c["start"] < self.min_frames:
             return None
-        rep = Rep(len(self.reps) + 1, c["start"], frame, c["min_knee"], c["peak_torso"])
+        rep = Rep(len(self.reps) + 1, c["start"], frame, c["min_knee"], c["peak_torso"], stance=c["stance"])
         if rep.min_knee > self.max_depth_knee:
             rep.issues.append(f"yeterince inmedi (diz {rep.min_knee:.0f})")
+        if rep.stance is not None and rep.stance > self.max_stance:
+            rep.issues.append(f"bacaklar cok acik ({rep.stance:.2f}x omuz)")
         if rep.peak_torso is not None and rep.peak_torso > self.max_torso:
             rep.issues.append(f"govde one cok egik ({rep.peak_torso:.0f})")
         self.reps.append(rep)
